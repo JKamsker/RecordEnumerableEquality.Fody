@@ -118,7 +118,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Acknowledgements
 
 Special thanks to the [Fody](https://github.com/Fody/Fody) community for their support and contributions.
-
----
-
-Feel free to explore the source code, raise issues, or contribute to the project. Happy coding!
