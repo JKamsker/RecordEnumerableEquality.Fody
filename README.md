@@ -18,7 +18,7 @@ Install-Package RecordEnumerableEquality.Fody
 Or add the package to your project file:
 
 ```xml
-<PackageReference Include="RecordEnumerableEquality.Fody" Version="x.y.z" />
+<PackageReference Include="RecordEnumerableEquality.Fody" Version="0.0.6" />
 ```
 
 ## Usage
