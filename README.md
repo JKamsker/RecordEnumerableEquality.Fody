@@ -1,7 +1,7 @@
 # <img src="assets/logo.png" height="30px"> Record Enumerable Equality - Fody
 
 [![NuGet](https://img.shields.io/nuget/v/RecordEnumerableEquality.Fody.svg)](https://www.nuget.org/packages/RecordEnumerableEquality.Fody/)
-[![Build Status](https://img.shields.io/github/workflow/status/JKamsker/RecordEnumerableEquality.Fody/CI)](https://github.com/JKamsker/RecordEnumerableEquality.Fody/actions)
+<!-- [![Build Status](https://img.shields.io/github/workflow/status/JKamsker/RecordEnumerableEquality.Fody/CI)](https://github.com/JKamsker/RecordEnumerableEquality.Fody/actions) -->
 
 ## Overview
 
