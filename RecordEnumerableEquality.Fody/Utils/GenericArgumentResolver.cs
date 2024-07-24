@@ -1,40 +1,41 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using Mono.Cecil;
 
 namespace RecordEnumerableEquality.Fody;
 
-public record GenericArgumentResult(
+public record GenericArgumentResolverResult(
     TypeReference RequestedType,
     TypeReference DirectSubclass,
     TypeReference[] GenericArguments);
 
-public static class GenericTypeHelper
+public static class GenericArgumentResolver
 {
     /// <summary>
-    /// Returns TEntity of EntityTypeBuilder{TEntity}, 
+    /// Returns TEntity of EntityTypeBuilder{TEntity},
     /// even from EntityTypeBuilderOfEntity : EntityTypeBuilder{TEntity}.
     /// </summary>
     /// <param name="concreteType">For e.g EntityTypeBuilderOfEntity.</param>
     /// <param name="genericDefinition">for e.g typeof(EntityTypeBuilder{}).</param>
     /// <returns>An enumerable of generic arguments of <paramref name="genericDefinition"/>.</returns>
-    public static IEnumerable<GenericArgumentResult> GetGenericArgumentsOfTypeDefinition(
+    public static IEnumerable<GenericArgumentResolverResult> GetGenericArgumentsOfTypeDefinition(
         TypeReference concreteType,
         TypeReference genericDefinition
     )
     {
-        // var resolved = concreteType.Resolve();
-
         var nt = concreteType.GetBaseTypes(true);
-            // .ToList();
+        var genericDefinitionIsBase = concreteType.GetElementType().FullName == genericDefinition.FullName;
+        if (genericDefinitionIsBase)
+        {
+            nt = nt.Append(concreteType);
+        }
         
-        // return EnumerateBaseTypesAndInterfaces(concreteType)
-        // return resolved.GetBaseTypes(true)
         return nt
             .Where(x => x.IsGenericInstance)
             .Where(x => x.GetElementType().FullName == genericDefinition.FullName)
-            .Select(x => new GenericArgumentResult(
+            .Select(x => new GenericArgumentResolverResult(
                 RequestedType: concreteType,
                 DirectSubclass: x,
                 GenericArguments: ((GenericInstanceType)x).GenericArguments.ToArray()
@@ -42,10 +43,10 @@ public static class GenericTypeHelper
     }
 
     // same as GetGenericArgumentsOfTypeDefinition but returns only the first result
-    public static GenericArgumentResult? GetFirstGenericArgumentsOfTypeDefinition(
+    public static GenericArgumentResolverResult? GetFirstGenericArgumentsOfTypeDefinition(
         TypeReference concreteType,
         TypeReference genericDefinition,
-        Func<GenericArgumentResult, bool>? predicate = null
+        Func<GenericArgumentResolverResult, bool>? predicate = null
     )
     {
         var result = GetGenericArgumentsOfTypeDefinition(concreteType, genericDefinition);
@@ -56,45 +57,6 @@ public static class GenericTypeHelper
 
         return result.FirstOrDefault();
     }
-
-    // private static IEnumerable<TypeReference> EnumerateBaseTypesAndInterfaces(TypeReference? type, bool returnInput = true)
-    // {
-    //     if (type == null)
-    //     {
-    //         yield break;
-    //     }
-    //
-    //     if (returnInput)
-    //     {
-    //         yield return type;
-    //     }
-    //
-    //     if (type is GenericInstanceType genericInstanceType)
-    //     {
-    //         
-    //     }
-    //     
-    //
-    //     var resolvedType = type.Resolve();
-    //
-    //     var current = resolvedType.BaseType;
-    //     while (current != null)
-    //     {
-    //         var currentResolved = current.Resolve();
-    //         foreach (var interfaceType in currentResolved.Interfaces)
-    //         {
-    //             yield return interfaceType.InterfaceType;
-    //         }
-    //
-    //         yield return current;
-    //         current = current.Resolve().BaseType;
-    //     }
-    //
-    //     foreach (var interfaceType in resolvedType.Interfaces)
-    //     {
-    //         yield return interfaceType.InterfaceType;
-    //     }
-    // }
 
     private static IEnumerable<TypeReference> EnumerateBaseTypesAndInterfaces(
         TypeReference? type,

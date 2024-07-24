@@ -2,87 +2,24 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+
 using Mono.Cecil;
 using Mono.Cecil.Rocks;
 
 namespace RecordEnumerableEquality.Fody;
 
-public static class CecilExtensions
+public static class BaseTypeResolver
 {
-    public static IEnumerable<TypeReference> GetAllInterfaces(TypeReference type)
+    public static IEnumerable<TypeReference> GetInterfaces(this TypeReference type)
     {
-        return GetBaseTypes(type.Resolve(), true).Where(x => x.IsInterface());
+        return GetBaseTypes(type, true).Where(x => x.IsInterface());
     }
 
     // The following code was inspired by https://web.archive.org/web/20160412001031/http://blog.stevesindelar.cz/mono-cecil-how-to-get-all-base-types-and-interfaces-with-resolved-generic-arguments
     // Through https://mono-cecil.narkive.com/ijCNWVif/how-to-get-generic-arguments-of-a-base-type-or-an-interface
 
     private const string CannotResolveMessage = "Cannot resolve type {0} from type {1}";
-
-
-    public static IEnumerable<TypeReference> GetBaseTypes(
-        this TypeDefinition type,
-        bool includeIfaces
-    )
-    {
-        Contract.Requires(type != null);
-        Contract.Requires(
-            type.IsInterface == false,
-            "GetBaseTypes is not valid for interfaces");
-
-        var result = new List<TypeReference>();
-        var current = type;
-        var mappedFromSuperType = new List<TypeReference>();
-        var previousGenericArgsMap =
-            GetGenericArgsMap(
-                type,
-                new Dictionary<string, TypeReference>(),
-                mappedFromSuperType);
-        Contract.Assert(mappedFromSuperType.Count == 0);
-
-        do
-        {
-            var currentBase = current.BaseType;
-            if (currentBase is GenericInstanceType)
-            {
-                previousGenericArgsMap =
-                    GetGenericArgsMap(
-                        current.BaseType,
-                        previousGenericArgsMap,
-                        mappedFromSuperType);
-                if (mappedFromSuperType.Any())
-                {
-                    currentBase = ((GenericInstanceType)currentBase)
-                        .ElementType.MakeGenericInstanceType(
-                            previousGenericArgsMap
-                                .Select(x => x.Value)
-                                .ToArray());
-                    mappedFromSuperType.Clear();
-                }
-            }
-            else
-            {
-                previousGenericArgsMap =
-                    new Dictionary<string, TypeReference>();
-            }
-
-            result.Add(currentBase);
-
-            if (includeIfaces)
-            {
-                result.AddRange(BuildIFaces(current, previousGenericArgsMap));
-            }
-
-            current = current.BaseType.SafeResolve(
-                string.Format(
-                    CannotResolveMessage,
-                    current.BaseType.FullName,
-                    current.FullName));
-        } while (current.IsEqual(typeof(object)) == false);
-
-        return result;
-    }
-
+    
     private static bool IsEqual(
         this TypeReference type,
         Type typeToCompare
@@ -122,7 +59,6 @@ public static class CecilExtensions
             // yield return result.InterfaceType;
             var fixedType = FixGenericArgs(result.InterfaceType, genericArgsMap);
             yield return fixedType;
-
         }
     }
 
@@ -137,14 +73,13 @@ public static class CecilExtensions
         {
             return result;
         }
-        
+
         var fixedType = FixGenericArgs(type, superTypeMap);
-        
+
         var genericArgs = ((GenericInstanceType)fixedType).GenericArguments;
         var genericPars = ((GenericInstanceType)fixedType)
             .ElementType.SafeResolve(CannotResolveMessage).GenericParameters;
-        
-        
+
         /*
          * Now genericArgs contain concrete arguments for the generic
          * parameters (genericPars).
@@ -188,7 +123,7 @@ public static class CecilExtensions
         {
             var arg = genericArgs[i];
             var param = genericPars[i];
-            
+
             if (arg is GenericParameter)
             {
                 TypeReference mapping;
@@ -215,8 +150,8 @@ public static class CecilExtensions
 
         return result;
     }
-    
-    // Fixes arg: 
+
+    // Fixes arg:
     // eg:
     // Input:
     //      type: ICollection<KeyValuePair<TKey, TValue>>
@@ -274,28 +209,51 @@ public static class CecilExtensions
         return resolved;
     }
 
-
     public static IEnumerable<TypeReference> GetBaseTypes(
         this TypeReference typeReference,
         bool includeIfaces
     )
     {
-        var results = new List<TypeReference>();
+        if (typeReference.IsArray)
+        {
+            // string[] -> System.Array
+
+            if (includeIfaces)
+            {
+                // string[] -> IEnumerable<string>
+
+                var btype = typeReference.GetElementType();
+                var enumerableType = typeReference.Module.ImportReference(typeof(IEnumerable<>)).MakeGenericInstanceType(btype);
+                yield return enumerableType;
+            }
+        }
+
+        //var results = new List<TypeReference>();
 
         var mappedFromSuperType = new List<TypeReference>();
         var previousGenericArgsMap =
             GetGenericArgsMap(typeReference, new Dictionary<string, TypeReference>(), mappedFromSuperType);
 
         var current = typeReference.Resolve();
-        
+
         do
         {
             if (includeIfaces)
             {
-                results.AddRange(BuildIFaces(current, previousGenericArgsMap));
+                var interfaces = BuildIFaces(current, previousGenericArgsMap);
+                foreach (var item in interfaces)
+                {
+                    yield return item;
+                }
             }
-            
+
             var currentBase = current.BaseType;
+
+            if (currentBase is null)
+            {
+                break;
+            }
+
             if (currentBase is GenericInstanceType)
             {
                 previousGenericArgsMap =
@@ -320,8 +278,14 @@ public static class CecilExtensions
             }
 
             // yield return currentBase;
-            results.Add(currentBase);
-            
+            //results.Add(currentBase);
+            yield return currentBase;
+
+            if (current.BaseType == null)
+            {
+                break;
+            }
+
             current = current.BaseType.SafeResolve(
                 string.Format(
                     CannotResolveMessage,
@@ -329,6 +293,6 @@ public static class CecilExtensions
                     current.FullName));
         } while (current.IsEqual(typeof(object)) == false);
 
-        return results;
+        //return results;
     }
 }

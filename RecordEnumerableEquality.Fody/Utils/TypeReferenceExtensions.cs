@@ -1,10 +1,11 @@
-using System.Collections.Generic;
-using System.Linq;
-using Mono.Cecil;
+﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
-using System.Diagnostics.CodeAnalysis;
-using System.ComponentModel;
+
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace RecordEnumerableEquality.Fody;
 
@@ -25,11 +26,46 @@ public static partial class TypeReferenceExtensions
             return false;
         }
 
+        // Are we looking for IInterface<> or IInterface<string> or INonGenericInterface
+
+        var interfaceKind = interfaceType.DetermineInterfaceType();
+
+        // InterfaceType.NonGenericInterface would work on the other path aswell but this one feels better
+        // Please submit unit tests to prove me wrong or right ¯\_(ツ)_/¯
+        if (interfaceKind is InterfaceType.GenericInterfaceWithTypeArgument or InterfaceType.NonGenericInterface)
+        {
+            var interfaces = type.GetInterfaces();
+            if (interfaces.Select(x => x.FullName).Contains(interfaceType.FullName))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        // Special case: type.IsArray is true and interfaceType is IEnumerable<>
+        if (interfaceKind == InterfaceType.GenericInterfaceDefinition
+            && type.IsArray
+            && interfaceType.FullName == "System.Collections.Generic.IEnumerable`1")
+        {
+            return true;
+        }
+
+        //if (interfaceKind == InterfaceType.NonGenericInterface)
+        //{
+        //    //Debugger.Break();
+        //}
+
         // Resolve the type to get its full definition
         var typeDef = type.Resolve();
         if (typeDef == null)
         {
             return false;
+        }
+
+        if (interfaceType.Resolve() == typeDef)
+        {
+            return true;
         }
 
         // Check all interfaces implemented by this type
@@ -81,63 +117,6 @@ public static partial class TypeReferenceExtensions
         return false;
     }
 
-    public static bool IsRecord(this TypeReference typeReference)
-    {
-        // Resolve the type definition from the type reference
-        var typeDefinition = typeReference.Resolve();
-
-        return IsRecord(typeDefinition);
-    }
-
-    public static bool IsRecord(this TypeDefinition typeDefinition)
-    {
-        // Check if the type definition contains the EqualityContract property
-        var hasEqualityContract = typeDefinition.Properties.Any(static p =>
-            p.Name == "EqualityContract" && p.PropertyType.FullName == "System.Type" && p.GetMethod != null);
-
-        if (!hasEqualityContract)
-            return false;
-
-        // Check if the type definition contains a PrintMembers method
-        var hasPrintMembers = typeDefinition.Methods.Any(static m =>
-            m.Name == "PrintMembers" && m.ReturnType.FullName == "System.Boolean" &&
-            m.Parameters.Count == 1 && m.Parameters[0].ParameterType.FullName == "System.Text.StringBuilder");
-
-        if (!hasPrintMembers)
-            return false;
-
-        // Check if the type definition contains an overridden ToString method
-        var hasToStringOverride = typeDefinition.Methods.Any(static m =>
-            m.Name == "ToString" && m.ReturnType.FullName == "System.String" && m.IsVirtual && !m.IsAbstract);
-
-        if (!hasToStringOverride)
-            return false;
-
-        // Check if the type definition contains a clone method with a specific pattern
-        var hasCloneMethod = typeDefinition.Methods.Any(m =>
-            m.Name.Contains("Clone") && m.Parameters.Count == 0 &&
-            m.ReturnType.FullName == typeDefinition.FullName);
-
-        if (!hasCloneMethod)
-            return false;
-
-        // Check for compiler-generated backing fields
-        var compilerGeneratedBackingFields = typeDefinition.Fields
-            .Where(static f => f.IsPrivate && f.Name.Contains("k__BackingField"))
-            .ToList();
-
-        // Check if properties have corresponding compiler-generated backing fields
-        var propertiesWithBackingFields = typeDefinition.Properties
-            .Where(p => compilerGeneratedBackingFields.Any(f => f.Name.Contains(p.Name)))
-            .ToList();
-
-        if (!propertiesWithBackingFields.Any())
-            return false;
-
-        // If all checks passed, it is a record
-        return true;
-    }
-
     public static bool IsInterface(this TypeReference typeReference)
     {
         return typeReference.Resolve()?.IsInterface ?? false;
@@ -183,6 +162,49 @@ public static partial class TypeReferenceExtensions
             yield return genericArgument;
         }
     }
+
+    public enum InterfaceType
+    {
+        /// <summary>
+        /// Eg INonGenericInterface
+        /// </summary>
+        NonGenericInterface,
+
+        /// <summary>
+        /// Eg IGenericInterface<>
+        /// </summary>
+        GenericInterfaceDefinition,
+
+        /// <summary>
+        /// Eg IGenericInterface<string>
+        /// </summary>
+        GenericInterfaceWithTypeArgument
+    }
+
+    public static InterfaceType DetermineInterfaceType(this Mono.Cecil.TypeReference typeReference)
+    {
+        var isInterface = typeReference.IsInterface();
+        if (!isInterface)
+        {
+            throw new ArgumentException("Type is not an interface");
+        }
+
+        if (typeReference.IsGenericInstance)
+        {
+            // Case 3: Generic Interface with Type Argument
+            return InterfaceType.GenericInterfaceWithTypeArgument;
+        }
+        else if (typeReference.HasGenericParameters)
+        {
+            // Case 2: Generic Interface Definition
+            return InterfaceType.GenericInterfaceDefinition;
+        }
+        else
+        {
+            // Case 1: Non-Generic Interface
+            return InterfaceType.NonGenericInterface;
+        }
+    }
 }
 
 public static partial class TypeReferenceExtensions
@@ -198,7 +220,8 @@ public static partial class TypeReferenceExtensions
         if (interfaceType == null)
             throw new ArgumentNullException(nameof(interfaceType));
 
-        var res = GenericTypeHelper.GetGenericArgumentsOfTypeDefinition(type, interfaceType);
+        var res = GenericArgumentResolver
+            .GetGenericArgumentsOfTypeDefinition(type, interfaceType);
         return res.Select(x => x.GenericArguments);
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Tests")]
+[assembly: InternalsVisibleTo("RecordEnumerableEquality.Tests")]
 
 namespace RecordEnumerableEquality.Fody;
 

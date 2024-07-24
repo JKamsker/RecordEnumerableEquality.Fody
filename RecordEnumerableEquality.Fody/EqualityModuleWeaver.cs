@@ -4,6 +4,8 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
 
+using RecordEnumerableEquality.Fody.Utils;
+
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -120,8 +122,6 @@ public partial class ModuleWeaver : BaseModuleWeaver
 
             Assert(instructions[i].OpCode == OpCodes.Callvirt);
 
-            //var equalsMethodDef = comparerType.Resolve().Methods.Single(m => m.Name == "Equals");
-
             var importedEqualsMethod = method.Module.ImportReference(_equalsMethodDef);
             importedEqualsMethod.DeclaringType = comparerType;
 
@@ -141,10 +141,12 @@ public partial class ModuleWeaver : BaseModuleWeaver
         var processor = method.Body.GetILProcessor();
         var instructions = method.Body.Instructions;
 
+        var methodCallInstructions = instructions.Where(i => i.Operand is MethodReference).ToList();
+
         for (int i = 0; i < instructions.Count; i++)
         {
             var instruction = instructions[i];
-
+            
             // Replace IL_0016
             var isGetHashCodeCall = TryReplaceGetDefaultComparer(method, instruction, processor, out var comparerType);
             if (!isGetHashCodeCall)
@@ -215,33 +217,34 @@ public partial class ModuleWeaver : BaseModuleWeaver
         }
 
         //  methodReference.DeclaringType: List<SubClass> implements IEnumerable<SubClass> ?
-        var type = methodReference.DeclaringType.GetGenericArguments().SingleOrDefault();
-        if (!type.ImplementsInterface(_iEnumerableReference))
+        // type is the property type eg System.Collections.Generic.List`1<TestAssembly.SubClass>
+        var enumerableType = methodReference.DeclaringType.GetGenericArguments().SingleOrDefault();
+        if (!enumerableType.ImplementsInterface(_iEnumerableReference))
         {
             return false;
         }
 
         // Exclude String
-        if (type.FullName == "System.String")
+        if (enumerableType.FullName == "System.String")
         {
             return false;
         }
 
-        // Get SubClass from List<SubClass>
-        var genericArgumentsForEnumerable = type.GetGenericArgumentsForInterface(_iEnumerableReference).ToList();
-        var subClass = genericArgumentsForEnumerable.SingleOrDefault()?[0];
-        if (subClass == null)
+        // Get SubClass from List<SubClass> {System.Collections.Generic.IEnumerable`1<TestAssembly.SubClass>}
+        // When type is List<SubClass> then subclass is SubClass
+        var elementType = enumerableType
+            .GetGenericArgumentsForInterface(_iEnumerableReference)
+            .SingleOrDefault()?[0];
+        
+        if (elementType == null)
         {
             return false;
         }
 
-        var extRef = _valueComparerDefinition.MakeGenericInstanceType(subClass);
-
+        var extRef = _valueComparerDefinition.MakeGenericInstanceType(elementType);
         var newRef = method.Module.ImportReference(extRef);
 
         comparerType = (GenericInstanceType)newRef;
-
-        //var getDefaultMethod = newRef.Resolve().Methods.First(m => m.Name == "get_Default");
 
         var importedGetDefaultMethod = method.Module.ImportReference(_getDefaultValueDef);
         importedGetDefaultMethod.DeclaringType = newRef;

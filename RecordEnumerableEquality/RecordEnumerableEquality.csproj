@@ -7,8 +7,8 @@
   </PropertyGroup>
 
 	<PropertyGroup>
-		<Version>0.0.3</Version>
-		<PackageVersion>0.0.3</PackageVersion>
+		<Version>0.0.6</Version>
+		<PackageVersion>0.0.6</PackageVersion>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<Authors>Simon Cropp</Authors>
 		<Description>Add property notification to all classes that implement INotifyPropertyChanged.</Description>
@@ -25,5 +25,8 @@
 		<!--<ProjectReference Include="..\PropertyChanged.Fody.Analyzer/PropertyChanged.Fody.Analyzer.csproj" ReferenceOutputAssembly="false" Condition="'$(TargetFrameworkIdentifier)'!='.NetFramework'" />-->
 		<!--<None Include="..\PropertyChanged.Fody.Analyzer\bin\$(Configuration)\netstandard2.0\PropertyChanged.Fody.Analyzer.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />-->
 	</ItemGroup>
+	<!--<ItemGroup>
+	  <ProjectReference Include="..\RecordEnumerableEquality.Fody\RecordEnumerableEquality.Fody.csproj" />
+	</ItemGroup>-->
 
 </Project>

@@ -1,0 +1,42 @@
+# Replacing all EqualityComparer<T> with CustomComparer<T>
+
+```csharp
+public class CustomDefaultComparers
+{
+    private readonly Dictionary<Type, object> _comparers = new();
+    
+    public static CustomDefaultComparers Instance { get; } = new CustomDefaultComparers();
+
+    public IEqualityComparer<T> GetEnumerableComparer<T>()
+    {
+        if (_comparers.TryGetValue(typeof(T), out var comparer))
+        {
+            return (IEqualityComparer<T>)comparer;
+        }
+        
+        return EqualityComparer<T>.Default;
+    }
+    
+    public void AddComparer<T>(IEqualityComparer<T> comparer)
+    {
+        _comparers[typeof(T)] = comparer;
+    }
+    
+    // Adding a comparer rule.
+    // CustomDefaultComparers.Instance.AddComparer(type(IEnumerable<>), typeof(EnumerableValueComparer<>));
+    // So if we say, CustomDefaultComparers.Instance.GetEnumerableComparer<List<int>>()
+    //          it will return EnumerableValueComparer<int> (alternative EnumerableValueComparer<List<int>>?)
+    //          EnumerableValueComparer<T> must implement IEqualityComparer<IEnumerable<T>>
+}
+
+public static class CustomComparer<T> 
+{
+    private static IEqualityComparer<T>? _comparer;
+    public static IEqualityComparer<T> Default => _comparer ?? EqualityComparer<T>.Default;
+    public static void SetComparer(IEqualityComparer<T> comparer)
+    {
+        _comparer = comparer;
+    }
+}
+
+```
