@@ -7,19 +7,33 @@
 
 `RecordEnumerableEquality.Fody` is a Fody add-in that enables deep equality comparison for C# records containing properties implementing `IEnumerable<T>`. This allows for comparison of records with collections in a straightforward and intuitive manner, ensuring that two records with the same collection elements are considered equal, even if the instances of the collections are different.
 
-## Installation
 
-To install `RecordEnumerableEquality.Fody`, you can use the NuGet package manager. Run the following command in the Package Manager Console:
+## Usage
 
-```shell
-Install-Package RecordEnumerableEquality.Fody
+See also [Fody usage](https://github.com/Fody/Home/blob/master/pages/usage.md).
+
+### NuGet installation
+
+Install the [RecordEnumerableEquality.Fody NuGet package](https://nuget.org/packages/RecordEnumerableEquality.Fody/) and update the [Fody NuGet package](https://nuget.org/packages/Fody/):
+
+```powershell
+PM> Install-Package Fody
+PM> Install-Package RecordEnumerableEquality.Fody
 ```
 
-Or add the package to your project file:
+The `Install-Package Fody` is required since NuGet always defaults to the oldest, and most buggy, version of any dependency.
+
+### Add to FodyWeavers.xml
+
+Add `<PropertyChanged/>` to [FodyWeavers.xml](https://github.com/Fody/Home/blob/master/pages/usage.md#add-fodyweaversxml)
 
 ```xml
-<PackageReference Include="RecordEnumerableEquality.Fody" Version="0.0.6" />
+<Weavers>
+  <RecordEnumerableEquality/>
+</Weavers>
 ```
+
+
 
 ## Usage
 

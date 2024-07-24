@@ -7,8 +7,8 @@
   </PropertyGroup>
 
 	<PropertyGroup>
-		<Version>0.0.6</Version>
-		<PackageVersion>0.0.6</PackageVersion>
+		<Version>0.0.7</Version>
+		<PackageVersion>0.0.7</PackageVersion>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<Authors>Jonas Kamsker</Authors>
 		<Description>Add comparison to your Enumerables inside records</Description>
@@ -18,7 +18,21 @@
 		<PackageProjectUrl>https://github.com/JKamsker/RecordEnumerableEquality.Fody</PackageProjectUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<WeaverPropsFile>$(MSBuildThisFileDirectory)Weaver.props</WeaverPropsFile>
+		<PackageIcon>logo.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/JKamsker/RecordEnumerableEquality.Fody</RepositoryUrl>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Include="..\assets\logo.png">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	  <None Include="..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Fody" Version="6.8.0" PrivateAssets="none" />
