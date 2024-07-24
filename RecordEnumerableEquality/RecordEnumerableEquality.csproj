@@ -10,15 +10,16 @@
 		<Version>0.0.6</Version>
 		<PackageVersion>0.0.6</PackageVersion>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<Authors>Simon Cropp</Authors>
-		<Description>Add property notification to all classes that implement INotifyPropertyChanged.</Description>
-		<PackageTags>Xaml, MVVM, INotifyPropertyChanged, DataBinding, ILWeaving, Cecil</PackageTags>
+		<Authors>Jonas Kamsker</Authors>
+		<Description>Add comparison to your Enumerables inside records</Description>
+		<PackageTags>ILWeaving, Cecil, Records, Comparison, IEqualityComparer</PackageTags>
 		<PackageOutputPath>$(SolutionDir)nugets</PackageOutputPath>
-		<PackageIconUrl>https://raw.githubusercontent.com/Fody/PropertyChanged/master/package_icon.png</PackageIconUrl>
-		<PackageProjectUrl>https://github.com/Fody/PropertyChanged</PackageProjectUrl>
+		<Icon>https://raw.githubusercontent.com/JKamsker/RecordEnumerableEquality.Fody/master/assets/logo.png?token=GHSAT0AAAAAAB3FVQK5APYGLIF5GMOKENWWZVBIHLA</Icon>
+		<PackageProjectUrl>https://github.com/JKamsker/RecordEnumerableEquality.Fody</PackageProjectUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<WeaverPropsFile>$(MSBuildThisFileDirectory)Weaver.props</WeaverPropsFile>
 	</PropertyGroup>
+
 	<ItemGroup>
 		<PackageReference Include="Fody" Version="6.8.0" PrivateAssets="none" />
 		<PackageReference Include="FodyPackaging" Version="6.8.0" PrivateAssets="All" />
