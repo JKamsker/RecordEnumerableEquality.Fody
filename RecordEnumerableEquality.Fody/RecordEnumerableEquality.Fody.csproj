@@ -14,9 +14,9 @@
 		</PackageReference>
 	</ItemGroup>
 
-	<ItemGroup>
-	  <!--<ProjectReference Include="..\RecordEnumerableEquality\RecordEnumerableEquality.csproj" />-->
-	  <ProjectReference Include="..\TestAssembly\TestAssembly.csproj" />
-	</ItemGroup>
+<!--	<ItemGroup>-->
+<!--	  &lt;!&ndash;<ProjectReference Include="..\RecordEnumerableEquality\RecordEnumerableEquality.csproj" />&ndash;&gt;-->
+<!--	  <ProjectReference Include="..\TestAssembly\TestAssembly.csproj" />-->
+<!--	</ItemGroup>-->
 
 </Project>

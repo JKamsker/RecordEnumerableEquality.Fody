@@ -1,15 +1,12 @@
 using Fody;
-
 using Mono.Cecil;
-
 using RecordEnumerableEquality.Fody;
 using RecordEnumerableEquality.Tests.Utils;
-
 using System.Collections;
 
 namespace RecordEnumerableEquality.Tests;
 
-public class WeaverTests
+public partial class WeaverTests
 {
     [Theory]
     [InlineData("List", "new List<SubClass>()")]
@@ -22,31 +19,31 @@ public class WeaverTests
         var realCollectionType = collectionType == "Array" ? "SubClass[]" : $"{collectionType}<SubClass>";
 
         string code = $$"""
-            using System;
-            using System.Collections.Generic;
+                        using System;
+                        using System.Collections.Generic;
 
-            namespace TestAssembly
-            {
-                public record MainClass
-                {
-                    public string Property1 { get; set; }
-
-                    public {{realCollectionType}} SubClasses { get; set; } = {{collectionInitialization}};
-                }
-
-                public record SubClass
-                {
-                    public string Property2 { get; set; }
-                    public string Property3 { get; set; }
-                }
-            }
-            """;
+                        namespace TestAssembly
+                        {
+                            public record MainClass
+                            {
+                                public string Property1 { get; set; }
+                        
+                                public {{realCollectionType}} SubClasses { get; set; } = {{collectionInitialization}};
+                            }
+                        
+                            public record SubClass
+                            {
+                                public string Property2 { get; set; }
+                                public string Property3 { get; set; }
+                            }
+                        }
+                        """;
 
         var weavingTask = new ModuleWeaver();
         using var assembly = AssemblyGenerator.Generate(code);
         TestResult testResult = weavingTask.ExecuteTestRun(assembly.Location, runPeVerify: false);
-        
-        Validate(testResult);
+
+        OpenDnSpyIfFailed(testResult, ShouldBeEqual);
     }
 
     // Test a custom collection type
@@ -54,78 +51,79 @@ public class WeaverTests
     public void TestCustomCollectionType()
     {
         string code = """
-            using System;
-            using System.Collections.Generic;
+                      using System;
+                      using System.Collections.Generic;
 
-            namespace TestAssembly
-            {
-                public record MainClass
-                {
-                    public string Property1 { get; set; }
-
-                    public CustomCollection<SubClass> SubClasses { get; set; } = new CustomCollection<SubClass>();
-                }
-
-                public record SubClass
-                {
-                    public string Property2 { get; set; }
-                    public string Property3 { get; set; }
-                }
-
-                public class CustomCollection<T> : List<T>
-                {
-                }
-            }
-            """;
+                      namespace TestAssembly
+                      {
+                          public record MainClass
+                          {
+                              public string Property1 { get; set; }
+                      
+                              public CustomCollection<SubClass> SubClasses { get; set; } = new CustomCollection<SubClass>();
+                          }
+                      
+                          public record SubClass
+                          {
+                              public string Property2 { get; set; }
+                              public string Property3 { get; set; }
+                          }
+                      
+                          public class CustomCollection<T> : List<T>
+                          {
+                          }
+                      }
+                      """;
 
         var weavingTask = new ModuleWeaver();
         using var assembly = AssemblyGenerator.Generate(code);
         TestResult testResult = weavingTask.ExecuteTestRun(assembly.Location, runPeVerify: false);
 
-        Validate(testResult);
+        OpenDnSpyIfFailed(testResult, ShouldBeEqual);
     }
-
-    private static void Validate(TestResult testResult, bool opendnSpy = true)
+    
+    private static void OpenDnSpyIfFailed(TestResult testResult, Action<TestResult> action)
     {
         try
         {
-            ValidateImpl(testResult);
+            action(testResult);
         }
         catch (Exception)
         {
-            if (opendnSpy)
-            {
-                OpenDnSpy(testResult);
-            }
-
+            // testResult.OpenInDnSpy();
             throw;
         }
     }
-
-    private static void OpenDnSpy(TestResult testResult)
+    
+    private static void ShouldBeEqual(TestResult testResult)
     {
-        var dnspy = @"C:\Users\W31rd0\tools\dnSpy\x64\dnSpy.exe";
-        var dll = testResult.AssemblyPath;
+        var (eq, hash1, hash2) = ValidateResults(testResult);
 
-        System.Diagnostics.Process.Start(dnspy, dll);
+        Assert.Equal(hash1, hash2);
+        Assert.True(eq);
+    }
+    
+    private static void ShouldNotBeEqual(TestResult testResult)
+    {
+        var (eq, hash1, hash2) = ValidateResults(testResult);
+
+        Assert.False(eq);
+        Assert.NotEqual(hash1, hash2);
     }
 
-    private static void ValidateImpl(TestResult testResult)
+    private static (bool eq, int hash1, int hash2) ValidateResults(TestResult testResult)
     {
         var mainType = testResult.Assembly.GetType("TestAssembly.MainClass");
         var subType = testResult.Assembly.GetType("TestAssembly.SubClass");
 
         var main1 = CreateMainInstance(mainType, subType);
         var main2 = CreateMainInstance(mainType, subType);
-        var eq = main1.Equals(main2);
+        var eq = (bool)main1.Equals(main2);
 
         // GetHashCode
-        var hash1 = main1.GetHashCode();
-        var hash2 = main2.GetHashCode();
-
-        Assert.Equal(hash1, hash2);
-
-        Assert.True(eq);
+        var hash1 = (int)main1.GetHashCode();
+        var hash2 = (int)main2.GetHashCode();
+        return (eq, hash1, hash2);
     }
 
     private static dynamic CreateMainInstance(Type mainType, Type subType)
@@ -169,6 +167,7 @@ public class WeaverTests
             {
                 instance.SubClasses = Activator.CreateInstance(typeof(List<>).MakeGenericType(subType));
             }
+
             // Add sub instances to the list
             ((IList)instance.SubClasses).Add(subInstance);
             ((IList)instance.SubClasses).Add(subInstance2);

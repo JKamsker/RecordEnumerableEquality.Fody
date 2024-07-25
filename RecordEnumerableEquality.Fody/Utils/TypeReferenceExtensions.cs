@@ -13,7 +13,7 @@ public static partial class TypeReferenceExtensions
 {
     // Not null if returns true attribute
 
-    public static bool ImplementsInterface([NotNullWhen(false)] this TypeReference type, TypeReference interfaceType)
+    public static bool ImplementsInterface([NotNullWhen(true)] this TypeReference? type, TypeReference interfaceType)
     {
         if (type == null)
         {

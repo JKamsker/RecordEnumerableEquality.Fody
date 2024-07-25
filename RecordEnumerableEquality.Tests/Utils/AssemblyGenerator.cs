@@ -1,10 +1,10 @@
 ﻿using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,13 +17,23 @@ internal static class AssemblyGenerator
         // Create a syntax tree from the source code
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(code);
 
-        // Define references to necessary assemblies
-        var references = new List<MetadataReference>
-        {
-            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
-        };
+        var satelites = typeof(EnumerableValueComparer<>)
+            .Assembly
+            .GetReferencedAssemblies()
+            .Select(x => Assembly.Load(x).Location);
+
+        var references = new[]
+            {
+                typeof(object).Assembly.Location,
+                typeof(Enumerable).Assembly.Location,
+                typeof(Console).Assembly.Location,
+                typeof(EnumerableValueComparer<>).Assembly.Location,
+                Assembly.Load("System.Runtime").Location,
+            }
+            .Concat(satelites)
+            .Select(x => MetadataReference.CreateFromFile(x))
+            .ToArray();
+
 
         // Create a compilation object
         CSharpCompilation compilation = CSharpCompilation.Create(
@@ -47,7 +57,7 @@ internal static class AssemblyGenerator
                 diagnostic.IsWarningAsError ||
                 diagnostic.Severity == DiagnosticSeverity.Error);
 
-            throw new Exception("Compilation failed");
+            throw new Exception($"Compilation failed: {string.Join(Environment.NewLine, failures)}");
         }
 
         return ta;
@@ -207,7 +217,14 @@ public static class FileEx
     {
         if (System.IO.File.Exists(filename))
         {
-            System.IO.File.Delete(filename);
+            try
+            {
+                System.IO.File.Delete(filename);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
     }
 
@@ -239,6 +256,7 @@ public static class RandomExtensions
         {
             sb.Append(charset[random.Next(charset.Length)]);
         }
+
         return sb.ToString();
     }
 }

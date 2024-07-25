@@ -7,8 +7,8 @@
   </PropertyGroup>
 
 	<PropertyGroup>
-		<Version>0.0.7</Version>
-		<PackageVersion>0.0.7</PackageVersion>
+		<Version>0.0.9</Version>
+		<PackageVersion>0.0.9</PackageVersion>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<Authors>Jonas Kamsker</Authors>
 		<Description>Add comparison to your Enumerables inside records</Description>
